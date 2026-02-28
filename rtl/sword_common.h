@@ -162,7 +162,7 @@ struct __attribute__ ((__packed__)) Parallel {
 
 struct __attribute__ ((__packed__)) Work {
  private:
-  ompt_work_type_t wstype;
+  ompt_work_t wstype;
   ompt_scope_endpoint_t endpoint;
 
  public:
@@ -171,7 +171,7 @@ struct __attribute__ ((__packed__)) Work {
     endpoint = ompt_scope_begin;
   }
 
-  Work(ompt_work_type_t wt, ompt_scope_endpoint_t ep) {
+  Work(ompt_work_t wt, ompt_scope_endpoint_t ep) {
     wstype = wt;
     endpoint = ep;
   }
@@ -193,7 +193,7 @@ struct __attribute__ ((__packed__)) Master {
 
 struct __attribute__ ((__packed__)) SyncRegion {
  private:
-  ompt_sync_region_kind_t kind;
+  ompt_sync_region_t kind;
   ompt_scope_endpoint_t endpoint;
   ompt_id_t barrier_id;
 
@@ -204,7 +204,7 @@ struct __attribute__ ((__packed__)) SyncRegion {
     barrier_id = 0;
   }
 
-  SyncRegion(ompt_id_t bid, ompt_sync_region_kind_t k, ompt_scope_endpoint_t ep) {
+  SyncRegion(ompt_id_t bid, ompt_sync_region_t k, ompt_scope_endpoint_t ep) {
     barrier_id = bid;
     kind = k;
     endpoint = ep;
@@ -213,21 +213,21 @@ struct __attribute__ ((__packed__)) SyncRegion {
 
 struct __attribute__ ((__packed__)) MutexRegion {
  private:
-  ompt_mutex_kind_t kind;
+  ompt_mutex_t kind;
   ompt_wait_id_t wait_id;
 
  public:
   MutexRegion() {
-    kind = ompt_mutex;
+    kind = ompt_mutex_lock;
     wait_id = 0;
   }
 
-  MutexRegion(ompt_mutex_kind_t k, ompt_wait_id_t wid) {
+  MutexRegion(ompt_mutex_t k, ompt_wait_id_t wid) {
     kind = k;
     wait_id = wid;
   }
 
-  ompt_mutex_kind_t getKind() const {
+  ompt_mutex_t getKind() const {
     return kind;
   }
 
@@ -251,7 +251,7 @@ std::size_t hash_value(MutexRegion const& a) {
 struct __attribute__ ((__packed__)) TaskCreate {
  private:
   ompt_id_t task_id;
-  ompt_task_type_t type;
+  ompt_task_flag_t type;
   int has_dependences;
 
  public:
@@ -261,7 +261,7 @@ struct __attribute__ ((__packed__)) TaskCreate {
     has_dependences = 0;
   }
 
-  TaskCreate(ompt_id_t id, ompt_task_type_t t, int hd) {
+  TaskCreate(ompt_id_t id, ompt_task_flag_t t, int hd) {
     task_id = id;
     type = t;
     has_dependences = hd;

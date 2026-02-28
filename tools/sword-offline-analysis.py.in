@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!@Python3_EXECUTABLE@
 
 import argparse
 import errno
@@ -10,7 +10,6 @@ import signal
 import subprocess
 import sys
 import time
-from distutils.spawn import find_executable
 from os.path import expanduser
 
 VERSION = '0.1'
@@ -25,7 +24,7 @@ SWORD_REPORT = 'sword_report'
 args = ""
 executable = ""
 analysis_tool = ""
-shell = find_executable("bash")
+shell = shutil.which("bash")
 walltime = "24:00:00"
 partition = "pbatch"
 
@@ -100,10 +99,14 @@ if __name__ == '__main__':
 
     # Unknown arguments
     if(unknown):
-        print "Ignoring the following unknown args:", unknown
+        print("Ignoring the following unknown args:", unknown)
 
     # Set default analysis tool
-    analysis_tool = find_executable(args.analysis_tool[0])
+    analysis_tool = "@CMAKE_INSTALL_PREFIX@/bin/sword-race-analysis"
+    if args.analysis_tool:
+        user_tool = shutil.which(args.analysis_tool[0])
+        if user_tool:
+            analysis_tool = user_tool
 
     # Report folder
     args.report_path = args.report_path[0]
@@ -116,13 +119,13 @@ if __name__ == '__main__':
     # Traces folder
     args.traces_path = args.traces_path[0]
     if not os.path.exists(args.traces_path):
-        print "The traces folder '" + args.traces_path + "' does not exists.\nPlease specify the correct path with the option '--traces-path <path-to-traces-folder>'."
+        print("The traces folder '" + args.traces_path + "' does not exists.\nPlease specify the correct path with the option '--traces-path <path-to-traces-folder>'.")
         sys.exit(-1)
 
     # Executable check
     executable = args.executable[0]
     if not os.path.exists(executable):
-        print "The executable '" + executable + "' does not exists.\nPlease specify the correct path and name for the executable."
+        print("The executable '" + executable + "' does not exists.\nPlease specify the correct path and name for the executable.")
         sys.exit(-1)
 
     mkdir_p(args.report_path)
@@ -176,14 +179,14 @@ if __name__ == '__main__':
     if args.print_tree:
         print_tree += " --print"
 
-    for key,value in pregions.iteritems():
-        for bid, nested in value.iteritems():
+    for key,value in pregions.items():
+        for bid, nested in value.items():
             if(args.cluster_run):
                 # Use SLURM
                 # SLURM Configuration values
                 config_file = SLURM_DIR + "/slurm_config_" + sanitizeFileName(subdir) + "_" + str(key)
                 output = SLURM_DIR + "/slurm_output_" + sanitizeFileName(subdir)
-                cmd = "ulimit -c unlimited\n%s --executable %s --traces-path %s --report-path %s --pregion %s %s" % (analysis_tool, executable, args.traces_path, args.report_path, key, print_tree)
+                cmd = "ulimit -c unlimited && %s --executable %s --traces-path %s --report-path %s --pregion %s %s" % (analysis_tool, executable, args.traces_path, args.report_path, key, print_tree)
                 createSLURMConfig(config_file, walltime, output, cmd)
                 # Run on cluster
                 # sbatch_output_file = "%s/%s.%s.%s" % (benchmark_paths[val["path"]]["sbatch_output_path"], app["executable"], mode, t)
@@ -196,25 +199,25 @@ if __name__ == '__main__':
                 while(int(bash_out) >= 30):
                     bash_process = subprocess.Popen(bashCommand, stdout=subprocess.PIPE, shell=True)
                     bash_out, bash_err = bash_process.communicate()
-                    print bash_out
+                    print(bash_out)
                     time.sleep(5)
                 if(not args.dry_run):
                     ret = executeCommand(command, False)
                 if(ret):
-                    print "A problem occurred while analyzing the traces in folder '" + subdir + "'.\n\nPlease run the analysis again with the command: '" + command + "'."
+                    print("A problem occurred while analyzing the traces in folder '" + subdir + "'.\n\nPlease run the analysis again with the command: '" + command + "'.")
             else:
                 overhead_filename = "%s/overhead/%s.dat" % (args.report_path, key)
                 if(not os.path.exists(overhead_filename)):
                     nested_str = ','.join(map(str, nested['nested']))
                     if(not nested_str):
-                        command = "ulimit -c unlimited\n%s --executable %s --traces-path %s --report-path %s --pregion %s --bid %s %s" % (analysis_tool, executable, args.traces_path, args.report_path, key, bid, print_tree)
+                        command = "ulimit -c unlimited && %s --executable %s --traces-path %s --report-path %s --pregion %s --bid %s %s" % (analysis_tool, executable, args.traces_path, args.report_path, key, bid, print_tree)
                     else:
-                        command = "ulimit -c unlimited\n%s --executable %s --traces-path %s --report-path %s --pregion %s --bid %s --nested %s %s" % (analysis_tool, executable, args.traces_path, args.report_path, key, bid, nested_str, print_tree)
-                    print command
+                        command = "ulimit -c unlimited && %s --executable %s --traces-path %s --report-path %s --pregion %s --bid %s --nested %s %s" % (analysis_tool, executable, args.traces_path, args.report_path, key, bid, nested_str, print_tree)
+                    # print(command)
                     ret = None
                     if(not args.dry_run):
                         ret = executeCommand(command)
                     if(ret):
-                        print "A problem occurred while analyzing the traces in folder '" + subdir + "'.\n\nPlease run the analysis again with the command: '" + command + "'."
+                        print("A problem occurred while analyzing the traces in folder '" + subdir + "'.\n\nPlease run the analysis again with the command: '" + command + "'.")
                 else:
-                    print "%s exists!" % overhead_filename
+                    print("%s exists!" % overhead_filename)

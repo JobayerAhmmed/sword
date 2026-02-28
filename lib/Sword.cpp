@@ -48,7 +48,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "sword/RegisterPasses.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "sword/LinkAllPasses.h"
+#include "llvm/Passes/PassPlugin.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace {

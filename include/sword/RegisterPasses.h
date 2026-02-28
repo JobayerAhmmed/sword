@@ -50,6 +50,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SWORD_REGISTER_PASSES_H
 #define SWORD_REGISTER_PASSES_H
 
+#include "llvm/Pass.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/IR/LegacyPassManager.h"
 
 namespace llvm {

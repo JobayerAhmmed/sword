@@ -100,7 +100,10 @@ bool dump_to_file(std::vector<TraceItem> *accesses, size_t size, size_t nmemb,
 #elif defined(HUFFMAN)
 #elif defined(ARITHMETIC)
 #else
-  size_t ret = fwrite((char *) accesses, size * nmemb, 1, file); // Write plain
+  size_t ret = fwrite((char *) accesses->data(), size * nmemb, 1, file); // Write plain
+  if (ret > 0) {
+    *file_offset_end += (size * nmemb);
+  }
 #endif
 
   return true;
@@ -152,7 +155,7 @@ extern "C" {
     return reinterpret_cast<ParallelData*>(parallel_data->ptr);
   }
 
-  static void on_ompt_callback_thread_begin(ompt_thread_type_t thread_type,
+  static void on_ompt_callback_thread_begin(ompt_thread_t thread_type,
                                             ompt_data_t *thread_data) {
     __sword_tid__ = my_next_id();
 
@@ -196,7 +199,7 @@ extern "C" {
                                               const ompt_frame_t *parent_task_frame,
                                               ompt_data_t* parallel_data,
                                               uint32_t requested_team_size,
-                                              ompt_invoker_t invoker,
+                                              int flags,
                                               const void *codeptr_ra) {
     __sword_status__++;
 
@@ -220,7 +223,7 @@ extern "C" {
 
   static void on_ompt_callback_parallel_end(ompt_data_t *parallel_data,
                                             ompt_data_t *task_data,
-                                            ompt_invoker_t invoker,
+                                            int flags,
                                             const void *codeptr_ra) {
     ParallelData *par_data = ToParallelData(parallel_data);
     delete par_data;
@@ -230,9 +233,13 @@ extern "C" {
                                              ompt_data_t *parallel_data,
                                              ompt_data_t *task_data,
                                              unsigned int team_size,
-                                             unsigned int thread_num) {
+                                             unsigned int thread_num,
+                                             int flags) {
 
     if(endpoint == ompt_scope_begin) {
+      if (!parallel_data || parallel_data->ptr == nullptr || !task_data) {
+        return;
+      }
       task_data->ptr = new ParallelData(ToParallelData(parallel_data));
       ParallelData *par_data = ToParallelData(task_data);
       __sword_status__ = par_data->level;
@@ -259,7 +266,7 @@ extern "C" {
     }
   }
 
-  static void on_ompt_callback_sync_region(ompt_sync_region_kind_t kind,
+  static void on_ompt_callback_sync_region(ompt_sync_region_t kind,
                                            ompt_scope_endpoint_t endpoint,
                                            ompt_data_t *parallel_data,
                                            ompt_data_t *task_data,
@@ -274,14 +281,14 @@ extern "C" {
     }
   }
 
-  static void on_ompt_callback_mutex_acquired(ompt_mutex_kind_t kind,
+  static void on_ompt_callback_mutex_acquired(ompt_mutex_t kind,
                                               ompt_wait_id_t wait_id,
                                               const void *codeptr_ra) {
     (*__sword_accesses__)[__sword_idx__] = TraceItem(mutex_acquired, MutexRegion(kind, wait_id));
     DUMP_TO_FILE
       }
 
-  static void on_ompt_callback_mutex_released(ompt_mutex_kind_t kind,
+  static void on_ompt_callback_mutex_released(ompt_mutex_t kind,
                                               ompt_wait_id_t wait_id,
                                               const void *codeptr_ra) {
     (*__sword_accesses__)[__sword_idx__] = TraceItem(mutex_released, MutexRegion(kind, wait_id));
@@ -298,7 +305,7 @@ do {                                                          \
 
 #define register_callback(name) register_callback_t(name, name##_t)
 
-  int ompt_initialize(ompt_function_lookup_t lookup,
+  int ompt_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                       ompt_data_t* tool_data) {
     const char *options = getenv("SWORD_OPTIONS");
     sword_flags = new SwordFlags(options);

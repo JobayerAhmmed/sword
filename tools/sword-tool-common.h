@@ -68,7 +68,9 @@ void execute_command(const char *cmd, std::string *buf, unsigned carrier = 1) {
         if (fgets(buffer.data(), 128, pipe.get()) != NULL)
         	*buf += buffer.data();
     }
-    buf->erase(buf->size() - carrier);
+	if (buf->size() >= carrier) {
+    	buf->erase(buf->size() - carrier);
+	}
 }
 
 #endif /* TOOLS_SWORD_TOOL_COMMON_H_ */
