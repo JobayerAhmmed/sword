@@ -100,48 +100,81 @@ the LLVM OpenMP Runtime with OMPT support).
 Create a folder in which to download and build Sword:
 
     export SWORD_BUILD=$PWD/SwordBuild
-    mkdir $SWORD_BUILD && cd $SWORD_BUILD
+    export SWORD_INSTALL=$SWORD_BUILD/.lib           # or any other install path
+    
+    mkdir -p $SWORD_BUILD
+    mkdir -p $SWORD_INSTALL
 
-Obtain the LLVM OpenMP Runtime with OMPT support:
+Obtain LLVM and OpenMP:
 
-    git clone https://github.com/llvm-mirror/openmp.git openmp
+    wget -O "$SWORD_BUILD/LLVM-21.1.8-Linux-X64.tar.xz" "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.8/LLVM-21.1.8-Linux-X64.tar.xz"
+    tar -xf "$SWORD_BUILD/LLVM-21.1.8-Linux-X64.tar.xz" -C "$SWORD_INSTALL" --strip-components=1
 
-and build it with the following command:
+    git clone --depth 1 --branch "llvmorg-21.1.8" --single-branch \
+        https://github.com/llvm/llvm-project.git "$SWORD_BUILD/llvm-project"
 
-    export OPENMP_INSTALL=$HOME/usr           # or any other install path
-    cd openmp/runtime
+    cd "$SWORD_BUILD/llvm-project"
+    rm -rf build
     mkdir build && cd build
-    cmake -G Ninja \
-     -D CMAKE_C_COMPILER=clang \
-     -D CMAKE_CXX_COMPILER=clang++ \
-     -D CMAKE_BUILD_TYPE=Release \
-     -D CMAKE_INSTALL_PREFIX:PATH=$OPENMP_INSTALL \
-     ..
-    ninja -j8 -l8                             # or any number of available cores
+
+    cmake -G Ninja ../openmp \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$SWORD_INSTALL" \
+        -DCMAKE_C_COMPILER="$SWORD_INSTALL/bin/clang" \
+        -DCMAKE_CXX_COMPILER="$SWORD_INSTALL/bin/clang++" \
+        -DOPENMP_STANDALONE_BUILD=ON \
+        -DLIBOMP_OMPD_SUPPORT=ON \
+        -DLIBOMP_OMPT_SUPPORT=ON
+
+    ninja -j$(nproc)
     ninja install
+
+Obtain Boost:
+
+    wget -O "$SWORD_BUILD/boost_1_89_0.tar.bz2" "https://archives.boost.io/release/1.89.0/source/boost_1_89_0.tar.bz2"
+    tar -xf "$SWORD_BUILD/boost_1_89_0.tar.bz2" -C "$SWORD_BUILD"
+
+    cp -r "$SWORD_BUILD/boost_1_89_0/boost/" "$SWORD_INSTALL/include/"
+    cp -a "$SWORD_BUILD/boost_1_89_0/stage/lib/." "$SWORD_INSTALL/lib/"
+
+Obtain GLPK:
+
+    wget -O "$SWORD_BUILD/glpk-4.65.tar.gz" "https://ftp.gnu.org/gnu/glpk/glpk-4.65.tar.gz"
+    tar -xf "$SWORD_BUILD/glpk-4.65.tar.gz" -C "$SWORD_BUILD"
+
+    cd "$SWORD_BUILD/glpk-4.65"
+    ./configure --prefix="$SWORD_INSTALL"
+    make -j$(nproc)
+    make install
 
 Obtain Sword:
 
     cd $SWORD_BUILD
-    git clone https://github.com/PRUNERS/sword.git sword
+    git clone --branch "v2.0.0" https://github.com/PRUNERS/sword.git "$SWORD_BUILD/sword"
 
-and build it with the following commands:
-
-    export SWORD_INSTALL=$HOME/usr           # or any other install path
-    cd sword
+    cd "$SWORD_BUILD/sword"
+    rm -rf build
     mkdir build && cd build
-    cmake -G Ninja \
-     -D CMAKE_C_COMPILER=clang \
-     -D CMAKE_CXX_COMPILER=clang++ \
-     -D CMAKE_BUILD_TYPE=Release
-     -D OMP_PREFIX:PATH=$OPENMP_INSTALL \
-     -D CMAKE_INSTALL_PREFIX:PATH=${SWORD_INSTALL} \
-     # -D GLPK_ROOT= \
-     # -D BOOST_ROOT= \
-     -D COMPRESSION=LZO .. \
-     ninja -j8 -l8 # or any number of available cores 
-     ninja install
-     cd ../..
+
+    cmake -G Ninja .. \
+        -D CMAKE_PREFIX_PATH="$SWORD_INSTALL" \
+        -D CMAKE_C_COMPILER="$SWORD_INSTALL/bin/clang" \
+        -D CMAKE_CXX_COMPILER="$SWORD_INSTALL/bin/clang++" \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D CMAKE_INSTALL_PREFIX:PATH="$SWORD_INSTALL" \
+        -D LLVM_DIR=$SWORD_INSTALL/lib/cmake/llvm \
+        -D OMP_PREFIX:PATH="$SWORD_INSTALL" \
+        -D OMP_INCLUDE_PATH:PATH="$SWORD_INSTALL/lib/clang/21/include" \
+        -D OMPT_INCLUDE_PATH:PATH="$SWORD_INSTALL/lib/clang/21/include" \
+        -D OMP_LIB_PATH:PATH="$SWORD_INSTALL/lib" \
+        -D COMPRESSION=LZO
+    ninja
+    ninja install
+
+Update PATH:
+
+    export PATH="$SWORD_INSTALL/bin:$PATH"
+    export LD_LIBRARY_PATH="$SWORD_INSTALL/lib:$LD_LIBRARY_PATH"
 
 
 <a id="orga0090a3"></a>
@@ -168,7 +201,7 @@ The following are some of the examples of how one can integrate
 
 ### Single source
 
-    clang-sword example.c -o example
+    clang-sword -O1 example.c -o example
 
 
 <a id="orgab9f46a"></a>
@@ -250,7 +283,7 @@ Suppose our program is called *myprogram.c*:
 
 We compile the program as follow:
 
-    clang-sword myprogram.c -o myprogram
+    clang-sword -O1 myprogram.c -o myprogram
 
 Now we can run the program with the following commands:
 
