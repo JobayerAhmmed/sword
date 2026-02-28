@@ -174,17 +174,16 @@ Obtain Sword:
     mkdir build && cd build
 
     cmake -G Ninja .. \
-        -D CMAKE_PREFIX_PATH="$SWORD_INSTALL" \
-        -D CMAKE_C_COMPILER="$SWORD_INSTALL/bin/clang" \
-        -D CMAKE_CXX_COMPILER="$SWORD_INSTALL/bin/clang++" \
-        -D CMAKE_BUILD_TYPE=Release \
-        -D CMAKE_INSTALL_PREFIX:PATH="$SWORD_INSTALL" \
-        -D LLVM_DIR=$SWORD_INSTALL/lib/cmake/llvm \
-        -D OMP_PREFIX:PATH="$SWORD_INSTALL" \
-        -D OMP_INCLUDE_PATH:PATH="$SWORD_INSTALL/lib/clang/21/include" \
-        -D OMPT_INCLUDE_PATH:PATH="$SWORD_INSTALL/lib/clang/21/include" \
-        -D OMP_LIB_PATH:PATH="$SWORD_INSTALL/lib" \
-        -D COMPRESSION=LZO
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_PREFIX_PATH="$SWORD_INSTALL" \
+        -DCMAKE_C_COMPILER="$SWORD_INSTALL/bin/clang" \
+        -DCMAKE_CXX_COMPILER="$SWORD_INSTALL/bin/clang++" \
+        -DCMAKE_INSTALL_PREFIX="$SWORD_INSTALL" \
+        -DOMP_PREFIX="$SWORD_INSTALL" \
+        -DOMP_INCLUDE_PATH="$SWORD_INSTALL/include" \
+        -DOMPT_INCLUDE_PATH="$SWORD_INSTALL/include" \
+        -DOMP_LIB_PATH:PATH="$SWORD_INSTALL/lib" \
+        -DCOMPRESSION=LZO
     ninja
     ninja install
 
@@ -192,6 +191,34 @@ Update PATH:
 
     export PATH="$SWORD_INSTALL/bin:$PATH"
     export LD_LIBRARY_PATH="$SWORD_INSTALL/lib:$LD_LIBRARY_PATH"
+
+Setup Sword test dependencies (optional):
+
+    cd "$SWORD_BUILD/llvm-project/llvm"
+    rm -rf build
+    mkdir -p build && cd build
+
+    cmake -G Ninja .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$SWORD_INSTALL" \
+        -DLLVM_INCLUDE_TESTS=ON \
+        -DLLVM_INSTALL_UTILS=ON
+
+    cp bin/FileCheck $SWORD_INSTALL/bin/
+    cp -r $SWORD_BUILD/llvm-project/llvm/utils/lit/lit $SWORD_INSTALL/bin/
+
+    cat << 'EOF' > $SWORD_INSTALL/bin/llvm-lit
+    #!/usr/bin/env python3
+    import os
+    import sys
+    bin_dir = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, bin_dir)
+    if __name__ == '__main__':
+        from lit.main import main
+        main()
+    EOF
+
+    chmod +x $SWORD_INSTALL/bin/llvm-lit
 
 
 <a id="orga0090a3"></a>
