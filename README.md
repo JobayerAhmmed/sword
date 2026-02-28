@@ -97,6 +97,23 @@ the LLVM OpenMP Runtime with OMPT support).
 
 ### Stand-alone building
 
+Install build dependencies:
+
+    sudo apt-get update
+    sudo apt-get install -y \
+        build-essential \
+        wget \
+        cmake \
+        make \
+        ninja-build \
+        git \
+        texinfo \
+        python3-dev \
+        libgmp-dev \
+        libmpfr-dev \
+        libmpc-dev \
+        libncurses-dev
+
 Create a folder in which to download and build Sword:
 
     export SWORD_BUILD=$PWD/SwordBuild
