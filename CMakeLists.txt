@@ -47,11 +47,14 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 3.4.3)
+cmake_minimum_required(VERSION 3.13.4)
 
 if(POLICY CMP0057)
   cmake_policy(SET CMP0057 NEW)
 endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(COMPRESSION "LZO" CACHE STRING "Set the compression algorithm to use.")
 
@@ -80,8 +83,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 # Standalone build or part of LLVM?
 set(LIBSWORD_STANDALONE_BUILD FALSE)
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-    project(sword C CXX)
-
+  project(sword C CXX)
   set(LIBSWORD_STANDALONE_BUILD TRUE)
 endif()
 
@@ -94,8 +96,12 @@ else()
   message(FATAL_ERROR "You are using an unsupported compiler! The required compiler is Clang version >= 3.9.")
 endif()
 
-string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} 0 3 LLVM_VERSION)
-string(REPLACE "." "" LLVM_VERSION ${LLVM_VERSION})
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
+  string(SUBSTRING ${CMAKE_CXX_COMPILER_VERSION} 0 3 LLVM_VERSION)
+  string(REPLACE "." "" LLVM_VERSION ${LLVM_VERSION})
+else()
+  string(REGEX MATCH "^[0-9]+" LLVM_VERSION ${CMAKE_CXX_COMPILER_VERSION})
+endif()
 add_definitions(-DLLVM_VERSION=${LLVM_VERSION})
 
 # These include files are in the cmake/ subdirectory
@@ -109,67 +115,64 @@ elseif(${UNIX})
 endif()
 
 if(${LIBSWORD_STANDALONE_BUILD})
-  # LLVM detection part
-  set(LLVM_ROOT "" CACHE PATH "Root of LLVM install.")
-  find_package(LLVM MODULE REQUIRED)
-
-  # Sanity check
-  if(NOT EXISTS ${LLVM_ROOT}/include/llvm)
-    message(FATAL_ERROR "LLVM_ROOT (${LLVM_ROOT}) is not a valid LLVM install")
-  endif()
-
-  # Incorporate the CMake features provided by LLVM:
-  if (EXISTS ${LLVM_ROOT}/lib/cmake/llvm)
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_ROOT}/lib/cmake/llvm")
-  elseif (EXISTS ${LLVM_ROOT}/lib64/cmake/llvm)
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_ROOT}/lib64/cmake/llvm")
-  else ()
-    message(FATAL_ERROR "LLVM cmake module dir could not be found")
-  endif ()
-
-  include(LLVMConfig)
-  include(HandleLLVMOptions)
-  include(AddLLVM)
-
-  # Group test settings.
-  set(LIBSWORD_TEST_C_COMPILER ${CMAKE_C_COMPILER} CACHE STRING
-    "C compiler to use for testing Sword runtime libraries.")
-  set(LIBSWORD_TEST_CXX_COMPILER ${CMAKE_CXX_COMPILER} CACHE STRING
-    "C++ compiler to use for testing Sword runtime libraries.")
-  set(LIBSWORD_LLVM_TOOLS_DIR "" CACHE PATH "Path to LLVM tools for testing.")
-
-  add_definitions(${LLVM_DEFINITIONS})
-  include_directories(${LLVM_INCLUDE_DIRS})
+  message(STATUS "LIBSWORD_STANDALONE_BUILD=true")
 else()
-  set(LLVM_ROOT ${CMAKE_INSTALL_PREFIX} CACHE PATH "Root of LLVM install.")
+  message(STATUS "LIBSWORD_STANDALONE_BUILD=false")
 endif()
+
+# LLVM detection part
+set(LLVM_ROOT ${CMAKE_PREFIX_PATH} CACHE PATH "Root of LLVM install.")
+find_package(LLVM REQUIRED CONFIG)
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(AddLLVM)
+add_definitions(${LLVM_DEFINITIONS})
+include_directories(${LLVM_INCLUDE_DIRS})
+
+# Incorporate the CMake features provided by LLVM:
+if (EXISTS ${LLVM_ROOT}/lib/cmake/llvm)
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_ROOT}/lib/cmake/llvm")
+elseif (EXISTS ${LLVM_ROOT}/lib64/cmake/llvm)
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${LLVM_ROOT}/lib64/cmake/llvm")
+else ()
+  message(FATAL_ERROR "LLVM cmake module dir could not be found")
+endif ()
+
+# Group test settings.
+set(LIBSWORD_TEST_C_COMPILER ${CMAKE_C_COMPILER} CACHE STRING
+  "C compiler to use for testing Sword runtime libraries.")
+set(LIBSWORD_TEST_CXX_COMPILER ${CMAKE_CXX_COMPILER} CACHE STRING
+  "C++ compiler to use for testing Sword runtime libraries.")
+set(LIBSWORD_LLVM_TOOLS_DIR ${LLVM_TOOLS_BINARY_DIR} CACHE PATH "Path to LLVM tools for testing.")
 
 # Look for OpenMP runtime
 if(${LIBSWORD_STANDALONE_BUILD})
-  set(OMP_PREFIX /usr/local CACHE PATH "Root of OpenMP runtime install")
+  set(OMP_PREFIX ${LLVM_ROOT} CACHE PATH "Root of OpenMP runtime install")
   if(NOT EXISTS ${OMP_PREFIX}/include/omp.h)
-    message(FATAL_ERROR "OMP_PREFIX (${OMP_PREFIX}) is not a valid OpenMP runtime install")
+    find_package(OpenMP)
+    if(NOT OpenMP_FOUND)
+      message(FATAL_ERROR "OMP_PREFIX (${OMP_PREFIX}) is not a valid OpenMP runtime install")
+    endif()
   endif()
 else()
   set(OMP_PREFIX ${LLVM_ROOT} CACHE PATH "Root of OpenMP runtime install")
 endif()
 
-find_package(Boost 1.58.0 COMPONENTS system filesystem REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem)
 if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIR})
-  link_directories(${Boost_LIBRARY_DIRS})
+  include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 endif()
 
 find_package(GLPK REQUIRED)
 if(GLPK_FOUND)
-  include_directories(${GLPK_INCLUDE_DIRS})
+  include_directories(SYSTEM ${GLPK_INCLUDE_DIRS})
   link_directories(${GLPK_LIBRARIES})
 endif()
 
 find_package(Omp)
 include_directories(${OMP_INCLUDE_PATH})
 link_directories(${OMP_LIB_PATH})
-if(NOT ${LLVM_NATIVE_ARCH} STREQUAL "PowerPC")
+
+if(NOT "${CMAKE_SYSTEM_PROCESSOR}" MATCHES "powerpc|ppc64le")
   find_package(Ompt)
   include_directories(${OMPT_INCLUDE_PATH})
 endif()

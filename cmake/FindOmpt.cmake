@@ -56,4 +56,4 @@ FIND_PATH(OMPT_INCLUDE_PATH ompt.h
 # if not-found, try again at cmake locations
 FIND_PATH(OMPT_INCLUDE_PATH ompt.h)
 
-find_package_handle_standard_args(OMPT DEFAULT_MSG OMPT_INCLUDE_PATH )
+find_package_handle_standard_args(Ompt DEFAULT_MSG OMPT_INCLUDE_PATH )

@@ -62,7 +62,14 @@ set(LIBSWORD_SOURCE_FILES
   Transforms/Instrumentation/InstrumentParallel.cpp
   )
 
-add_llvm_loadable_module(LLVMSword
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+add_library(LLVMSword MODULE
   ${LIBSWORD_SOURCE_FILES}
   ${LIBSWORD_HEADER_FILES}
-  )
+)
+set_target_properties(LLVMSword PROPERTIES
+  PREFIX ""
+  COMPILE_FLAGS "-fno-rtti"
+)
+install(TARGETS LLVMSword LIBRARY DESTINATION lib)

@@ -62,7 +62,7 @@ FIND_PATH(OMP_INCLUDE_PATH omp.h
 # if not-found, try again at cmake locations
 FIND_PATH(OMP_INCLUDE_PATH omp.h)
 
-find_package_handle_standard_args(OpenMP DEFAULT_MSG OMP_INCLUDE_PATH )
+find_package_handle_standard_args(Omp DEFAULT_MSG OMP_INCLUDE_PATH )
 
 # use an explicitly given omp path first
 FIND_PATH(OMP_LIB_PATH ${OMP_LIB_NAME}
@@ -71,4 +71,4 @@ FIND_PATH(OMP_LIB_PATH ${OMP_LIB_NAME}
 # if not-found, try again at cmake locations
 FIND_PATH(OMP_LIB_PATH ${OMP_LIB_NAME})
 
-find_package_handle_standard_args(OpenMP DEFAULT_MSG OMP_LIB_PATH )
+find_package_handle_standard_args(Omp DEFAULT_MSG OMP_LIB_PATH )
