@@ -53,6 +53,7 @@ int main()
 
 int ompt_initialize(
   ompt_function_lookup_t lookup,
+  int initial_device_num,
   ompt_data_t* tool_data)
 {
   printf("0: NULL_POINTER=%p\n", (void*)NULL);
