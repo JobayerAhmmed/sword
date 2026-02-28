@@ -220,6 +220,12 @@ Setup Sword test dependencies (optional):
 
     chmod +x $SWORD_INSTALL/bin/llvm-lit
 
+and run test:
+
+    cd "$SWORD_BUILD/sword/build"
+    ninja
+    ninja check-libsword
+
 
 <a id="orga0090a3"></a>
 
